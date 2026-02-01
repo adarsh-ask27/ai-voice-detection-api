@@ -13,12 +13,14 @@ logging.basicConfig(
 from audio_utils import preprocess_audio
 from feature_extractor import extract_features
 from model import predict
+from pydantic import BaseModel
 
 app = FastAPI(title="AI Voice Detection API")
 
 class VoiceRequest(BaseModel):
-    audio_url: str
-    message: str | None = None
+    language: str
+    audio_format: str
+    audio_base64_format: str
 
 def load_audio_from_url(url: str):
     headers = {
@@ -46,17 +48,18 @@ def detect_voice_get():
     
 @app.post("/detect-voice")
 def detect_voice(req: VoiceRequest):
-    try:
-        audio, sr = load_audio_from_url(req.audio_url)
-        audio = preprocess_audio(audio, sr)
+    audio, sr = decode_audio(req.audio_base64_format)
+    audio = preprocess_audio(audio, sr)
+    features = extract_features(audio)
 
-        features = extract_features(audio)
-        classification, confidence, _ = predict(features)
+    classification, confidence, explanation = predict(features)
 
-        return {
-            "prediction": classification,
-            "confidence": round(float(confidence), 3)
-        }
+    return {
+        "classification": classification,
+        "confidence": round(confidence, 3),
+        "language": req.language,
+        "explanation": explanation
+    }
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
