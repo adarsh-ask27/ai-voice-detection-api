@@ -40,7 +40,10 @@ def load_audio_from_url(url: str):
     )
 
     return audio, sr
-
+@app.get("/detect-voice")
+def detect_voice_get():
+    return {"message": "Use POST method for this endpoint"}
+    
 @app.post("/detect-voice")
 def detect_voice(req: VoiceRequest):
     try:
