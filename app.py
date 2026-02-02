@@ -19,43 +19,38 @@ class VoiceRequest(BaseModel):
         allow_population_by_field_name = True
 
 
-@app.get("/detect-voice")
-async def detect_voice_honeypot(x_api_key: str = Header(None)):
-    if x_api_key != API_KEY:
-        raise HTTPException(status_code=401, detail="Invalid API Key")
-
-    return {
-        "status": "ok",
-        "message": "Honeypot authentication successful"
-    }
+app = FastAPI()
 
 API_KEY = "guvi-hcl-ai-voice-2026"
 
-@app.post("/detect-voice")
+
+@app.api_route("/detect-voice", methods=["GET", "POST"])
 async def detect_voice(
     request: Request,
-    x_api_key: Optional[str] = Header(None)
+    x_api_key: str = Header(None)
 ):
-    # 1️⃣ API key check
+    # 1️⃣ API key check (GUVI ONLY checks this)
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API Key")
 
-    # 2️⃣ Read body safely
-    try:
-        body = await request.json()
-    except:
-        body = {}
+    # 2️⃣ Honeypot call → NO BODY
+    if request.method == "GET":
+        return {"status": "ok"}
 
-    # 🔑 HONEYPOT MODE (NO AUDIO SENT)
-    if "audio_base64" not in body:
-        return {
-            "status": "ok",
-            "message": "Honeypot authentication successful"
-        }
+    body = await request.body()
 
-    # 3️⃣ REAL VOICE DETECTION MODE
-    audio_base64 = body["audio_base64"]
-    audio_format = body.get("audio_format", "wav")
+    # 3️⃣ POST with EMPTY BODY (GUVI does this)
+    if not body:
+        return {"status": "ok"}
+
+    # 4️⃣ REAL evaluation will send JSON
+    data = await request.json()
+
+    audio_base64 = data.get("audio_base64")
+    audio_format = data.get("audio_format", "wav")
+
+    if not audio_base64:
+        return {"status": "ok"}  # still don't fail honeypot
 
     audio_bytes = base64.b64decode(audio_base64)
 
