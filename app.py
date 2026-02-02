@@ -27,7 +27,7 @@ def detect_voice(data: VoiceRequest):
     try:
         audio_bytes = base64.b64decode(data.audio_base64)
 
-        if len(audio_bytes) < 2000:
+        if len(audio_bytes) < 200:
             raise HTTPException(status_code=400, detail="Audio too short")
 
         suffix = "." + data.audio_format.lower()
