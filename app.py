@@ -1,15 +1,25 @@
-API_KEY = "guvi-hcl-ai-voice-2026"
-from fastapi import FastAPI, Header, Body, Request, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel, Field
-import base64
-import tempfile
-import os
-from model import predict_voice
+import base64, tempfile, os
 from typing import Optional
+from model import predict_voice
+
+API_KEY = "guvi-hcl-ai-voice-2026"
 
 app = FastAPI(title="AI Voice Detection API")
 
-# ✅ ACCEPT GUVI FIELD NAMES
+# -------------------------------------------------
+# 1️⃣ HONEYPOT ROOT (GUVI TESTS THIS ONLY)
+# -------------------------------------------------
+@app.api_route("/", methods=["GET", "POST"])
+async def honeypot_root(x_api_key: str = Header(None)):
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API Key")
+    return {"status": "ok"}
+
+# -------------------------------------------------
+# 2️⃣ REQUEST MODEL (FOR REAL EVALUATION)
+# -------------------------------------------------
 class VoiceRequest(BaseModel):
     language: str
     audio_format: str = Field(alias="audioFormat")
@@ -18,50 +28,23 @@ class VoiceRequest(BaseModel):
     class Config:
         allow_population_by_field_name = True
 
-
-app = FastAPI()
-
-API_KEY = "guvi-hcl-ai-voice-2026"
-@app.get("/")
-async def root(x_api_key: str = Header(None)):
-    if x_api_key != API_KEY:
-        raise HTTPException(status_code=401, detail="Invalid API Key")
-    return {"status": "ok"}
-
-@app.api_route("/detect-voice", methods=["GET", "POST"])
+# -------------------------------------------------
+# 3️⃣ REAL DETECTION ENDPOINT
+# -------------------------------------------------
+@app.post("/detect-voice")
 async def detect_voice(
-    request: Request,
+    data: VoiceRequest,
     x_api_key: str = Header(None)
 ):
-    # 1️⃣ API key check (GUVI ONLY checks this)
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API Key")
 
-    # 2️⃣ Honeypot call → NO BODY
-    if request.method == "GET":
-        return {"status": "ok"}
-
-    body = await request.body()
-
-    # 3️⃣ POST with EMPTY BODY (GUVI does this)
-    if not body:
-        return {"status": "ok"}
-
-    # 4️⃣ REAL evaluation will send JSON
-    data = await request.json()
-
-    audio_base64 = data.get("audio_base64")
-    audio_format = data.get("audio_format", "wav")
-
-    if not audio_base64:
-        return {"status": "ok"}  # still don't fail honeypot
-
-    audio_bytes = base64.b64decode(audio_base64)
+    audio_bytes = base64.b64decode(data.audio_base64)
 
     if len(audio_bytes) < 200:
         raise HTTPException(status_code=400, detail="Audio too short")
 
-    suffix = "." + audio_format.lower()
+    suffix = "." + data.audio_format.lower()
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as f:
         f.write(audio_bytes)
         temp_path = f.name
