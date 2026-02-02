@@ -66,8 +66,3 @@ async def honeypot_guard(
         "prediction": prediction,
         "confidence": confidence
     }
-
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
