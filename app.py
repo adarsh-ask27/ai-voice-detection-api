@@ -5,6 +5,7 @@ import base64
 import tempfile
 import os
 from model import predict_voice
+from typing import Optional
 
 app = FastAPI(title="AI Voice Detection API")
 
@@ -24,9 +25,21 @@ def root():
 
 
 @app.post("/detect-voice")
-def detect_voice(data: VoiceRequest, x_api_key:str= Header(None)):
+def detect_voice(
+    data: Optional[VoiceRequest] = None,
+    x_api_key: str = Header(None)
+):
+    # API key validation
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API Key")
+
+    # 🔴 THIS WAS MISSING (Honeypot fix)
+    if data is None:
+        return {
+            "status": "alive",
+            "message": "API is up and authenticated"
+        }
+
     try:
         audio_bytes = base64.b64decode(data.audio_base64)
 
