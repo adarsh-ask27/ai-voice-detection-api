@@ -36,29 +36,26 @@ async def detect_voice(
     request: Request,
     x_api_key: Optional[str] = Header(None)
 ):
-    # 1️⃣ API key validation
+    # 1️⃣ API key check
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API Key")
 
-    # 2️⃣ Read raw body
-    body = await request.body()
+    # 2️⃣ Read body safely
+    try:
+        body = await request.json()
+    except:
+        body = {}
 
-    # 🔥 THIS IS THE KEY PART 🔥
-    # Honeypot sends EMPTY body → just return success
-    if not body:
+    # 🔑 HONEYPOT MODE (NO AUDIO SENT)
+    if "audio_base64" not in body:
         return {
             "status": "ok",
             "message": "Honeypot authentication successful"
         }
 
-    # 3️⃣ If body exists → parse JSON
-    data = await request.json()
-
-    audio_base64 = data.get("audio_base64")
-    audio_format = data.get("audio_format", "wav")
-
-    if not audio_base64:
-        raise HTTPException(status_code=400, detail="audio_base64 missing")
+    # 3️⃣ REAL VOICE DETECTION MODE
+    audio_base64 = body["audio_base64"]
+    audio_format = body.get("audio_format", "wav")
 
     audio_bytes = base64.b64decode(audio_base64)
 
