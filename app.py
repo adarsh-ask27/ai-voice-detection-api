@@ -1,5 +1,5 @@
 API_KEY = "guvi-hcl-ai-voice-2026"
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, Body, HTTPException
 from pydantic import BaseModel, Field
 import base64
 import tempfile
@@ -23,17 +23,16 @@ class VoiceRequest(BaseModel):
 def root():
     return {"status": "API running"}
 
-
 @app.post("/detect-voice")
 def detect_voice(
-    data: Optional[VoiceRequest] = None,
+    data: Optional[VoiceRequest] = Body(None),
     x_api_key: str = Header(None)
 ):
     # API key validation
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API Key")
 
-    # 🔴 THIS WAS MISSING (Honeypot fix)
+    # Honeypot / health check (NO BODY)
     if data is None:
         return {
             "status": "alive",
