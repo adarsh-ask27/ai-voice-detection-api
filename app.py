@@ -1,5 +1,5 @@
 API_KEY = "guvi-hcl-ai-voice-2026"
-from fastapi import FastAPI, Header, Body, HTTPException
+from fastapi import FastAPI, Header, Body, Request, HTTPException
 from pydantic import BaseModel, Field
 import base64
 import tempfile
@@ -30,39 +30,42 @@ def honeypot_check(x_api_key: str = Header(None)):
     }
 
 @app.post("/detect-voice")
-def detect_voice(
-    data: Optional[VoiceRequest] = Body(None),
+async def honeypot_guard(
+    request: Request,
     x_api_key: str = Header(None)
 ):
-    # API key validation
+    # Honeypot check (NO BODY EXPECTED)
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API Key")
 
-    # Honeypot / health check (NO BODY)
-    if data is None:
+    # If body is empty → honeypot test
+    body = await request.body()
+    if not body:
         return {
             "status": "alive",
-            "message": "API is up and authenticated"
+            "message": "Honeypot check passed"
         }
 
-    try:
-        audio_bytes = base64.b64decode(data.audio_base64)
+    # If body exists → forward to real logic
+    data = VoiceRequest.parse_raw(body)
 
-        if len(audio_bytes) < 200:
-            raise HTTPException(status_code=400, detail="Audio too short")
+    audio_bytes = base64.b64decode(data.audio_base64)
 
-        suffix = "." + data.audio_format.lower()
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as f:
-            f.write(audio_bytes)
-            temp_path = f.name
+    if len(audio_bytes) < 200:
+        raise HTTPException(status_code=400, detail="Audio too short")
 
-        prediction, confidence = predict_voice(temp_path)
-        os.remove(temp_path)
+    suffix = "." + data.audio_format.lower()
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as f:
+        f.write(audio_bytes)
+        temp_path = f.name
 
-        return {
-            "prediction": prediction,
-            "confidence": confidence
-        }
+    prediction, confidence = predict_voice(temp_path)
+    os.remove(temp_path)
+
+    return {
+        "prediction": prediction,
+        "confidence": confidence
+    }
 
     except HTTPException as e:
         raise e
