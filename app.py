@@ -1,5 +1,5 @@
 API_KEY = "guvi-hcl-ai-voice-2026"
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 import base64
 import tempfile
