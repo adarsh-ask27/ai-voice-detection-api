@@ -1,3 +1,4 @@
+API_KEY = "guvi-hcl-ai-voice-2026"
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 import base64
@@ -23,7 +24,9 @@ def root():
 
 
 @app.post("/detect-voice")
-def detect_voice(data: VoiceRequest):
+def detect_voice(data: VoiceRequest, x_api_key:str= Header(None)):
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API Key")
     try:
         audio_bytes = base64.b64decode(data.audio_base64)
 
