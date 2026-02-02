@@ -29,32 +29,43 @@ def honeypot_check(x_api_key: str = Header(None)):
         "message": "Honeypot check passed"
     }
 
+API_KEY = "guvi-hcl-ai-voice-2026"
+
 @app.post("/detect-voice")
-async def honeypot_guard(
+async def detect_voice(
     request: Request,
-    x_api_key: str = Header(None)
+    x_api_key: Optional[str] = Header(None)
 ):
-    # Honeypot check (NO BODY EXPECTED)
+    # 1️⃣ API key validation
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API Key")
 
-    # If body is empty → honeypot test
+    # 2️⃣ Read raw body
     body = await request.body()
+
+    # 🔥 THIS IS THE KEY PART 🔥
+    # Honeypot sends EMPTY body → just return success
     if not body:
         return {
-            "status": "alive",
-            "message": "Honeypot check passed"
+            "status": "ok",
+            "message": "Honeypot authentication successful"
         }
 
-    # If body exists → forward to real logic
-    data = VoiceRequest.parse_raw(body)
+    # 3️⃣ If body exists → parse JSON
+    data = await request.json()
 
-    audio_bytes = base64.b64decode(data.audio_base64)
+    audio_base64 = data.get("audio_base64")
+    audio_format = data.get("audio_format", "wav")
+
+    if not audio_base64:
+        raise HTTPException(status_code=400, detail="audio_base64 missing")
+
+    audio_bytes = base64.b64decode(audio_base64)
 
     if len(audio_bytes) < 200:
         raise HTTPException(status_code=400, detail="Audio too short")
 
-    suffix = "." + data.audio_format.lower()
+    suffix = "." + audio_format.lower()
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as f:
         f.write(audio_bytes)
         temp_path = f.name
