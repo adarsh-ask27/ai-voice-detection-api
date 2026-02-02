@@ -20,13 +20,13 @@ class VoiceRequest(BaseModel):
 
 
 @app.get("/detect-voice")
-def honeypot_check(x_api_key: str = Header(None)):
+async def detect_voice_honeypot(x_api_key: str = Header(None)):
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API Key")
 
     return {
-        "status": "alive",
-        "message": "Honeypot check passed"
+        "status": "ok",
+        "message": "Honeypot authentication successful"
     }
 
 API_KEY = "guvi-hcl-ai-voice-2026"
