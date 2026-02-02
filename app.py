@@ -22,7 +22,11 @@ class VoiceRequest(BaseModel):
 app = FastAPI()
 
 API_KEY = "guvi-hcl-ai-voice-2026"
-
+@app.get("/")
+async def root(x_api_key: str = Header(None)):
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API Key")
+    return {"status": "ok"}
 
 @app.api_route("/detect-voice", methods=["GET", "POST"])
 async def detect_voice(
